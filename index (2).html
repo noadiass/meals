@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Weekly Meal Planner</title>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --cream: #ffffff;
+      --warm-white: #f7f7f7;
+      --sage: #00b386;
+      --sage-light: #33c9a0;
+      --terracotta: #ff4d00;
+      --terracotta-light: #ff8a65;
+      --charcoal: #111111;
+      --mid: #555555;
+      --light: #aaaaaa;
+      --border: #e0e0e0;
+      --yellow: #ffe600;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Barlow', sans-serif; background: var(--cream); color: var(--charcoal); min-height: 100vh; }
+
+    header {
+      background: var(--yellow);
+      color: var(--charcoal);
+      padding: 28px 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+      border-bottom: 3px solid var(--charcoal);
+    }
+    header h1 { font-family: 'Barlow Condensed', sans-serif; font-size: 3rem; font-weight: 800; line-height: 1; text-transform: uppercase; letter-spacing: -0.01em; }
+    header h1 em { font-style: normal; color: var(--terracotta); }
+    header p { display: none; }
+
+    .controls {
+      background: var(--charcoal);
+      border-bottom: none;
+      padding: 12px 48px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .controls span { font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 0.1em; margin-right: 4px; font-family: 'Barlow Condensed', sans-serif; }
+    .filter-btn { background: none; border: 1.5px solid #444; border-radius: 4px; padding: 5px 14px; font-family: 'Barlow Condensed', sans-serif; font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #888; cursor: pointer; transition: all 0.15s; }
+    .filter-btn:hover, .filter-btn.active { background: var(--yellow); border-color: var(--yellow); color: var(--charcoal); }
+    .shuffle-btn { margin-left: auto; background: var(--terracotta); border: none; border-radius: 4px; padding: 7px 18px; font-family: 'Barlow Condensed', sans-serif; font-size: 0.88rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: white; cursor: pointer; transition: background 0.2s; }
+    .shuffle-btn:hover { background: #e04400; }
+
+    main { padding: 40px 48px; max-width: 1200px; margin: 0 auto; }
+
+    .week-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 12px; margin-bottom: 48px; }
+    .day-col { display: flex; flex-direction: column; gap: 8px; }
+    .day-label { font-family: 'Barlow Condensed', sans-serif; font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--mid); padding-bottom: 8px; border-bottom: 3px solid var(--border); }
+    .day-label.today { color: var(--terracotta); border-color: var(--terracotta); }
+
+    .meal-slot { background: var(--warm-white); border: 2px solid var(--border); border-radius: 6px; padding: 12px; min-height: 90px; cursor: pointer; transition: all 0.15s; position: relative; overflow: hidden; }
+    .meal-slot:hover { border-color: var(--sage); box-shadow: 0 2px 12px rgba(0,0,0,0.08); transform: translateY(-1px); }
+    .meal-slot.filled { border-color: var(--charcoal); background: white; }
+    .meal-slot .slot-type { font-family: 'Barlow Condensed', sans-serif; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--light); margin-bottom: 4px; font-weight: 600; }
+    .meal-slot .meal-name { font-size: 0.85rem; font-weight: 500; color: var(--charcoal); line-height: 1.3; }
+    .meal-slot .meal-tag { display: inline-block; margin-top: 6px; font-family: 'Barlow Condensed', sans-serif; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; background: var(--charcoal); color: white; border-radius: 3px; padding: 2px 6px; }
+    .meal-slot .add-btn { font-size: 0.78rem; color: var(--light); display: flex; align-items: center; gap: 4px; margin-top: 4px; font-weight: 500; }
+    .meal-slot .clear-btn { position: absolute; top: 6px; right: 6px; background: none; border: none; color: var(--light); cursor: pointer; font-size: 0.75rem; line-height: 1; padding: 2px; display: none; }
+    .meal-slot:hover .clear-btn { display: block; }
+
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; align-items: center; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: white; border-radius: 8px; width: 90%; max-width: 560px; max-height: 80vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 24px 64px rgba(0,0,0,0.2); border: 2px solid var(--charcoal); }
+    .modal-header { padding: 24px 28px 16px; border-bottom: 2px solid var(--border); }
+    .modal-header h2 { font-family: 'Barlow Condensed', sans-serif; font-size: 1.8rem; font-weight: 800; text-transform: uppercase; margin-bottom: 12px; }
+    .modal-search { width: 100%; border: 2px solid var(--border); border-radius: 4px; padding: 9px 14px; font-family: 'Barlow', sans-serif; font-size: 0.88rem; background: var(--warm-white); outline: none; transition: border-color 0.15s; }
+    .modal-search:focus { border-color: var(--charcoal); }
+    .modal-filters { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+    .modal-filter-btn { background: none; border: 2px solid var(--border); border-radius: 4px; padding: 4px 12px; font-size: 0.78rem; font-family: 'Barlow Condensed', sans-serif; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--mid); cursor: pointer; transition: all 0.15s; }
+    .modal-filter-btn.active { background: var(--charcoal); border-color: var(--charcoal); color: white; }
+    .meal-list { overflow-y: auto; padding: 16px 28px; display: flex; flex-direction: column; gap: 6px; }
+    .meal-option { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-radius: 4px; border: 2px solid var(--border); cursor: pointer; transition: all 0.15s; background: white; }
+    .meal-option:hover { border-color: var(--sage); background: #f0fdf8; }
+    .meal-option-info { flex: 1; }
+    .meal-option-name { font-size: 0.9rem; font-weight: 500; color: var(--charcoal); }
+    .meal-option-desc { font-size: 0.75rem; color: var(--mid); margin-top: 2px; }
+    .meal-option-tag { font-family: 'Barlow Condensed', sans-serif; font-size: 0.68rem; font-weight: 700; text-transform: uppercase; background: var(--charcoal); color: white; border-radius: 3px; padding: 3px 8px; white-space: nowrap; }
+    .meal-option-tag.pasta { background: var(--terracotta); }
+    .meal-option-tag.soup { background: #4a90d9; }
+    .meal-option-tag.salad { background: var(--sage); }
+    .meal-option-tag.bowl { background: #7c5cbf; }
+    .modal-close { display: block; width: calc(100% - 56px); margin: 0 28px 20px; padding: 11px; background: none; border: 2px solid var(--border); border-radius: 4px; font-family: 'Barlow Condensed', sans-serif; font-size: 0.9rem; font-weight: 700; text-transform: uppercase; color: var(--mid); cursor: pointer; transition: all 0.15s; }
+    .modal-close:hover { background: var(--warm-white); }
+
+    .section-title { font-family: 'Barlow Condensed', sans-serif; font-size: 2rem; font-weight: 800; text-transform: uppercase; margin-bottom: 20px; letter-spacing: -0.01em; }
+    .shopping-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
+    .shopping-item { background: var(--warm-white); border: 2px solid var(--border); border-radius: 6px; padding: 10px 14px; font-size: 0.85rem; color: var(--charcoal); }
+    .no-meals-msg { color: var(--light); font-size: 0.85rem; }
+
+    /* Ingredient popover */
+    .ing-popover {
+      position: fixed;
+      background: var(--charcoal);
+      color: white;
+      border-radius: 6px;
+      padding: 14px 18px;
+      max-width: 240px;
+      z-index: 200;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+      pointer-events: none;
+      opacity: 0;
+      transform: translateY(4px);
+      transition: opacity 0.15s, transform 0.15s;
+    }
+    .ing-popover.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
+    .ing-popover h4 { font-family: 'Barlow Condensed', sans-serif; font-size: 1rem; font-weight: 700; text-transform: uppercase; margin-bottom: 8px; color: var(--yellow); }
+    .ing-popover ul { list-style: none; display: flex; flex-direction: column; gap: 3px; }
+    .ing-popover ul li { font-size: 0.78rem; color: #ccc; }
+    .ing-popover ul li::before { content: '·  '; color: var(--sage); }
+    .ing-popover .close-pop { position: absolute; top: 8px; right: 10px; background: none; border: none; color: #888; cursor: pointer; font-size: 0.8rem; pointer-events: auto; }
+
+    /* By-dish ingredients */
+    .dish-ingredient-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+    .dish-card { background: white; border: 2px solid var(--charcoal); border-radius: 6px; padding: 16px; }
+    .dish-card-name { font-family: 'Barlow Condensed', sans-serif; font-size: 1rem; font-weight: 700; text-transform: uppercase; color: var(--charcoal); margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+    .dish-card-day { font-family: 'Barlow Condensed', sans-serif; font-size: 0.68rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--terracotta); margin-bottom: 4px; }
+    .dish-card ul { list-style: none; display: flex; flex-direction: column; gap: 3px; }
+    .dish-card ul li { font-size: 0.78rem; color: var(--mid); }
+    .dish-card ul li::before { content: '·  '; color: var(--sage); }
+
+    @media (max-width: 900px) { header, .controls, main { padding-left: 24px; padding-right: 24px; } .week-grid { grid-template-columns: repeat(4, 1fr); } }
+    @media (max-width: 600px) { header h1 { font-size: 1.8rem; } .week-grid { grid-template-columns: repeat(2, 1fr); } }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1><em>Meal Ideas</em></h1>
+  </div>
+</header>
+
+<div class="controls">
+  <span>Show:</span>
+  <button class="filter-btn active" data-filter="all" onclick="filterSlots('all', this)">All</button>
+  <button class="filter-btn" data-filter="lunch" onclick="filterSlots('lunch', this)">Lunch</button>
+  <button class="filter-btn" data-filter="dinner" onclick="filterSlots('dinner', this)">Dinner</button>
+  <button class="shuffle-btn" onclick="shuffleWeek()">✦ Shuffle Week</button>
+</div>
+
+<main>
+  <div class="week-grid" id="weekGrid"></div>
+  <div style="margin-top: 16px;">
+    <h2 class="section-title">This week's ingredients</h2>
+    <div class="shopping-list" id="shoppingList">
+      <p class="no-meals-msg">Add meals to your week to see ingredient ideas.</p>
+    </div>
+  </div>
+</main>
+
+<div class="ing-popover" id="ingPopover">
+  <button class="close-pop" onclick="closePopover()">✕</button>
+  <h4 id="popoverTitle"></h4>
+  <ul id="popoverList"></ul>
+</div>
+
+<div class="modal-overlay" id="modalOverlay" onclick="closeModalOnBg(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Pick a meal</h2>
+      <input class="modal-search" type="text" placeholder="Search meals…" oninput="filterMeals(this.value)" />
+      <div class="modal-filters" id="modalFilters"></div>
+    </div>
+    <div class="meal-list" id="mealList"></div>
+    <button class="modal-close" onclick="closeModal()">Cancel</button>
+  </div>
+</div>
+
+<script>
+  const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const SLOTS = ['Lunch','Dinner'];
+
+  let MEALS = [];
+  const CATEGORIES = ['all','stew','noodles','pasta','bowl','salad','soup','other'];
+
+  let plan = {};
+  let activeSlotTarget = null;
+  let activeCategory = 'all';
+  let activeSlotFilter = 'all';
+
+  async function init() {
+    try {
+      const res = await fetch('meals.json');
+      MEALS = await res.json();
+    } catch (e) {
+      document.body.innerHTML = '<div style="padding:48px;font-family:sans-serif;"><strong>Could not load meals.json.</strong><br>Make sure both files are uploaded to GitHub Pages in the same folder.</div>';
+      return;
+    }
+    buildGrid();
+  }
+
+  init();
+
+  function buildGrid() {
+    const grid = document.getElementById('weekGrid');
+    grid.innerHTML = '';
+    const today = new Date().getDay();
+    const todayIdx = today === 0 ? 6 : today - 1;
+
+    DAYS.forEach((day, di) => {
+      const col = document.createElement('div');
+      col.className = 'day-col';
+
+      const label = document.createElement('div');
+      label.className = 'day-label' + (di === todayIdx ? ' today' : '');
+      label.textContent = day;
+      col.appendChild(label);
+
+      SLOTS.forEach(slot => {
+        if (activeSlotFilter !== 'all' && slot.toLowerCase() !== activeSlotFilter) return;
+        const s = document.createElement('div');
+        s.className = 'meal-slot' + (plan[day]?.[slot] ? ' filled' : '');
+        s.onclick = () => openModal(day, slot);
+
+        const slotType = document.createElement('div');
+        slotType.className = 'slot-type';
+        slotType.textContent = slot;
+        s.appendChild(slotType);
+
+        const content = document.createElement('div');
+        if (plan[day]?.[slot]) {
+          const meal = MEALS.find(m => m.name === plan[day][slot]);
+          content.innerHTML = `<div class="meal-name">${plan[day][slot]}</div>${meal ? `<span class="meal-tag">${meal.tag}</span>` : ''}`;
+          const clearBtn = document.createElement('button');
+          clearBtn.className = 'clear-btn';
+          clearBtn.title = 'Remove';
+          clearBtn.textContent = '✕';
+          clearBtn.onclick = (e) => { e.stopPropagation(); clearSlot(day, slot); };
+          s.appendChild(clearBtn);
+        } else {
+          content.innerHTML = `<div class="add-btn">+ add meal</div>`;
+        }
+        s.appendChild(content);
+        col.appendChild(s);
+      });
+
+      grid.appendChild(col);
+    });
+
+    updateShoppingList();
+  }
+
+  function clearSlot(day, slot) {
+    if (plan[day]) delete plan[day][slot];
+    buildGrid();
+  }
+
+  function filterSlots(type, btn) {
+    activeSlotFilter = type;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    buildGrid();
+  }
+
+  function openModal(day, slot) {
+    activeSlotTarget = { day, slot };
+    document.getElementById('modalOverlay').classList.add('open');
+    document.querySelector('.modal-search').value = '';
+    activeCategory = 'all';
+    buildModalFilters();
+    renderMealList('');
+  }
+
+  function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); }
+  function closeModalOnBg(e) { if (e.target === document.getElementById('modalOverlay')) closeModal(); }
+
+  function buildModalFilters() {
+    const container = document.getElementById('modalFilters');
+    container.innerHTML = '';
+    CATEGORIES.forEach(cat => {
+      const btn = document.createElement('button');
+      btn.className = 'modal-filter-btn' + (cat === activeCategory ? ' active' : '');
+      btn.textContent = cat.charAt(0).toUpperCase() + cat.slice(1);
+      btn.onclick = () => {
+        activeCategory = cat;
+        buildModalFilters();
+        renderMealList(document.querySelector('.modal-search').value);
+      };
+      container.appendChild(btn);
+    });
+  }
+
+  function filterMeals(query) { renderMealList(query); }
+
+  function renderMealList(query) {
+    const list = document.getElementById('mealList');
+    list.innerHTML = '';
+    const q = query.toLowerCase();
+    const filtered = MEALS.filter(m => {
+      const matchCat = activeCategory === 'all' || m.category === activeCategory;
+      const matchQ = !q || m.name.toLowerCase().includes(q) || m.desc.toLowerCase().includes(q);
+      return matchCat && matchQ;
+    });
+    if (!filtered.length) { list.innerHTML = '<p style="color:var(--light);font-size:0.85rem;padding:8px 0;">No meals found.</p>'; return; }
+    filtered.forEach(meal => {
+      const el = document.createElement('div');
+      el.className = 'meal-option';
+      el.innerHTML = `<div class="meal-option-info"><div class="meal-option-name">${meal.name}</div><div class="meal-option-desc">${meal.desc}</div></div><span class="meal-option-tag ${meal.tag}">${meal.tag}</span>`;
+      el.onclick = () => selectMeal(meal.name);
+      list.appendChild(el);
+    });
+  }
+
+  function selectMeal(name) {
+    const { day, slot } = activeSlotTarget;
+    if (!plan[day]) plan[day] = {};
+    plan[day][slot] = name;
+    closeModal();
+    buildGrid();
+  }
+
+  function shuffleWeek() {
+    plan = {};
+    DAYS.forEach(day => {
+      plan[day] = {};
+      SLOTS.forEach(slot => {
+        plan[day][slot] = MEALS[Math.floor(Math.random() * MEALS.length)].name;
+      });
+    });
+    buildGrid();
+  }
+
+  function showPopover(mealName, anchor) {
+    const meal = MEALS.find(m => m.name === mealName);
+    if (!meal) return;
+    const pop = document.getElementById('ingPopover');
+    document.getElementById('popoverTitle').textContent = meal.name;
+    const list = document.getElementById('popoverList');
+    list.innerHTML = meal.ingredients.map(i => `<li>${i}</li>`).join('');
+    pop.classList.add('visible');
+    // Position near anchor
+    const rect = anchor.getBoundingClientRect();
+    const popW = 240;
+    let left = rect.right + 8;
+    if (left + popW > window.innerWidth - 16) left = rect.left - popW - 8;
+    let top = rect.top;
+    pop.style.left = Math.max(8, left) + 'px';
+    pop.style.top = Math.max(8, top) + 'px';
+  }
+
+  function closePopover() {
+    document.getElementById('ingPopover').classList.remove('visible');
+  }
+
+  document.addEventListener('click', (e) => {
+    const pop = document.getElementById('ingPopover');
+    if (pop.classList.contains('visible') && !pop.contains(e.target) && !e.target.closest('.meal-slot.filled')) {
+      closePopover();
+    }
+  });
+
+  function updateShoppingList() {
+    const container = document.getElementById('shoppingList');
+    // Collect unique planned meals with their day/slot
+    const planned = [];
+    const seen = new Set();
+    DAYS.forEach(day => {
+      SLOTS.forEach(slot => {
+        const name = plan[day]?.[slot];
+        if (name) {
+          const key = name;
+          if (!seen.has(key)) {
+            seen.add(key);
+            const meal = MEALS.find(m => m.name === name);
+            if (meal) planned.push({ meal, day, slot });
+          }
+        }
+      });
+    });
+    if (!planned.length) { container.innerHTML = '<p class="no-meals-msg">Add meals to your week to see ingredient ideas.</p>'; return; }
+    container.className = 'dish-ingredient-grid';
+    container.innerHTML = '';
+    planned.forEach(({ meal, day, slot }) => {
+      const card = document.createElement('div');
+      card.className = 'dish-card';
+      card.innerHTML = `
+        <div class="dish-card-day">${day} · ${slot}</div>
+        <div class="dish-card-name">${meal.name}</div>
+        <ul>${meal.ingredients.map(i => `<li>${i}</li>`).join('')}</ul>
+      `;
+      container.appendChild(card);
+    });
+  }
+</script>
+</body>
+</html>
